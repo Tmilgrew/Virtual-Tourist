@@ -12,6 +12,8 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    let coreDataStack = CoreDataStack(modelName: "Model")
+    let dataController = DataController(modelName: "Model")
 
     func checkIfFirstLaunch(){
         if UserDefaults.standard.bool(forKey: "hasLaunchedBefore"){
@@ -25,6 +27,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         checkIfFirstLaunch()
+        dataController.load()
+        
+        let navigationController = window?.rootViewController as! UINavigationController
+        let locationViewController = navigationController.topViewController as! MapViewController
+        locationViewController.dataController = dataController
         return true
     }
 

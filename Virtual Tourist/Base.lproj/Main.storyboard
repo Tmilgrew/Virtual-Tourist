@@ -51,16 +51,17 @@
                     <navigationItem key="navigationItem" id="dy4-6m-sTZ"/>
                     <connections>
                         <outlet property="mapView" destination="iMp-Lp-isz" id="mTF-Go-vSS"/>
+                        <segue destination="kfZ-cP-9bA" kind="presentation" identifier="pushToCollection" id="nN8-Yk-y8b"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="P2q-35-xIO" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="564" y="89.505247376311857"/>
         </scene>
-        <!--View Controller-->
+        <!--Pin Detail View Controller-->
         <scene sceneID="297-7l-9hj">
             <objects>
-                <viewController id="kfZ-cP-9bA" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="PinDetailViewController" useStoryboardIdentifierAsRestorationIdentifier="YES" id="kfZ-cP-9bA" customClass="PinDetailViewController" customModule="Virtual_Tourist" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="ibE-wI-tis">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -113,6 +114,10 @@
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="lVa-9T-DWy"/>
                     </view>
+                    <connections>
+                        <outlet property="collectionView" destination="mag-Pk-dgX" id="Zcj-Ye-0jg"/>
+                        <outlet property="mapView" destination="vp9-Rl-yPT" id="lPr-qG-abD"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="wyH-XG-ztj" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
