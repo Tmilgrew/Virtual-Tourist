@@ -15,7 +15,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     
     @IBOutlet weak var mapView: MKMapView!
     
-    var droppedPin : MKPinAnnotationView?
+    var droppedPin : MKAnnotationView?
     var locations:[Location] = []
     var dataController:DataController!
     
@@ -86,24 +86,24 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         
-        let controller = storyboard!.instantiateViewController(withIdentifier: "PinDetailViewController") as! PinDetailViewController
-        let fetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
-        let coordinatePredicate: NSPredicate
-        
-        
-        let latitude = Double((view.annotation?.coordinate.latitude)!)
-        let longitude = Double((view.annotation?.coordinate.longitude)!)
-        
-        coordinatePredicate = NSPredicate(format: "latitude == %@ AND longitude == %@", argumentArray: [latitude, longitude])
-        fetchRequest.predicate = coordinatePredicate
-        
-        if let result = try? dataController.viewContext.fetch(fetchRequest){
-            controller.location = result[0]
-        }
+//        let controller = storyboard!.instantiateViewController(withIdentifier: "PinDetailViewController") as! PinDetailViewController
+//        let fetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
+//        let coordinatePredicate: NSPredicate
+//
+//
+//        let latitude = Double((view.annotation?.coordinate.latitude)!)
+//        let longitude = Double((view.annotation?.coordinate.longitude)!)
+//
+//        coordinatePredicate = NSPredicate(format: "latitude == %@ AND longitude == %@", argumentArray: [latitude, longitude])
+//        fetchRequest.predicate = coordinatePredicate
+//
+//        if let result = try? dataController.viewContext.fetch(fetchRequest){
+//            controller.location = result[0]
+//        }
         /*
          TODO: Handle Error
          */
-        
+        droppedPin = view
         performSegue(withIdentifier: "pushToCollection", sender: self)
         //navigationController!.pushViewController(controller, animated: true)
     }
@@ -112,16 +112,28 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
 
         let controller = segue.destination as! PinDetailViewController
+        
         let photoFetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
-        let photoPredicate = NSPredicate(format: "location == %@", controller.location)
-        photoFetchRequest.predicate = photoPredicate
+        let locationFetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
+        let latitude = Double((droppedPin?.annotation?.coordinate.latitude)!)
+        let longitude = Double((droppedPin?.annotation?.coordinate.longitude)!)
         
-        let fetchedResultsController = NSFetchedResultsController(fetchRequest: photoFetchRequest, managedObjectContext: dataController.viewContext, sectionNameKeyPath: nil, cacheName: nil)
-        fetchedResultsController.delegate = self as? NSFetchedResultsControllerDelegate
         
-        if let result = try? dataController.viewContext.fetch(photoFetchRequest){
-            controller.photos = result
+        let locationPredicate = NSPredicate(format: "latitude == %@ AND longitude == %@", argumentArray: [latitude, longitude])
+        locationFetchRequest.predicate = locationPredicate
+        if let result = try? dataController.viewContext.fetch(locationFetchRequest){
+            controller.location = result[0]
         }
+        
+        let photoPredicate = NSPredicate(format: "photoToLocation == %@", controller.location)
+        photoFetchRequest.predicate = photoPredicate
+        if let photoResult = try? dataController.viewContext.fetch(photoFetchRequest){
+            controller.photos = photoResult
+        }
+        
+        controller.dataController = dataController
+//        let fetchedResultsController = NSFetchedResultsController(fetchRequest: photoFetchRequest, managedObjectContext: dataController.viewContext, sectionNameKeyPath: nil, cacheName: nil)
+//        fetchedResultsController.delegate = self as? NSFetchedResultsControllerDelegate
         
         
 

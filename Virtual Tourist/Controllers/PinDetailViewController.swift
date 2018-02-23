@@ -14,7 +14,7 @@ import MapKit
 class PinDetailViewController: UIViewController {
     
     // MARK: Properties
-    var location:Location!
+    var location:Location! 
     var dataController:DataController!
     var photos: [Photo] = []
     
@@ -76,6 +76,7 @@ class PinDetailViewController: UIViewController {
                     let thisPhoto = Photo(context: self.dataController.viewContext)
                     thisPhoto.imageData = photo[FlickrClient.Constants.FlickrResponseKeys.MediumURL] as? String
                     thisPhoto.photoID = photo[FlickrClient.Constants.FlickrResponseKeys.Title] as? String
+                    thisPhoto.photoToLocation = location
                     try? self.dataController.viewContext.save()
                     print("\(thisPhoto)")
                 }
