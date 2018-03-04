@@ -2,7 +2,7 @@
 //  Location+CoreDataProperties.swift
 //  Virtual Tourist
 //
-//  Created by Thomas Milgrew on 2/13/18.
+//  Created by Thomas Milgrew on 3/1/18.
 //  Copyright © 2018 Thomas Milgrew. All rights reserved.
 //
 //

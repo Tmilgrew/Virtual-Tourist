@@ -46,7 +46,7 @@ class ImageCollectionViewController: CoreDataCollectionViewController {
                 //print("\(photosToSave)")
                 for photo in photosToSave {
                     let thisPhoto = Photo(context: self.dataController.viewContext)
-                    thisPhoto.imageData = photo[FlickrClient.Constants.FlickrResponseKeys.MediumURL] as? String
+                    thisPhoto.imageUrl = photo[FlickrClient.Constants.FlickrResponseKeys.MediumURL] as? String
                     thisPhoto.photoID = photo[FlickrClient.Constants.FlickrResponseKeys.Title] as? String
                     try? self.dataController.viewContext.save()
                     print("\(thisPhoto)")

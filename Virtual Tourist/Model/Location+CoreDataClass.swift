@@ -2,7 +2,7 @@
 //  Location+CoreDataClass.swift
 //  Virtual Tourist
 //
-//  Created by Thomas Milgrew on 2/13/18.
+//  Created by Thomas Milgrew on 3/1/18.
 //  Copyright © 2018 Thomas Milgrew. All rights reserved.
 //
 //
@@ -12,6 +12,7 @@ import CoreData
 
 @objc(Location)
 public class Location: NSManagedObject {
+    
     convenience init(latitude: Double, longitude: Double, context: NSManagedObjectContext){
         
         if let ent = NSEntityDescription.entity(forEntityName: "Location", in: context){
@@ -22,4 +23,5 @@ public class Location: NSManagedObject {
             fatalError("Unable to find Entity name!")
         }
     }
+
 }
