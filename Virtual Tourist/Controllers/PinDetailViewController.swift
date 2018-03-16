@@ -20,7 +20,6 @@ class PinDetailViewController: UIViewController {
     var itemToDelete = [Photo]()
     var insertedIndexPaths: [NSIndexPath]!
     var deletedIndexPaths: [NSIndexPath]!
-    //var activityIndicator:UIActivityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
     var selectedIndexes = [NSIndexPath]() {
         didSet {
             collectionView.reloadData()
@@ -64,12 +63,8 @@ class PinDetailViewController: UIViewController {
         itemToDelete.removeAll()
         selectedIndexes.removeAll()
         setupMap()
-//        activityIndicator.center = self.view.center
-//        activityIndicator.hidesWhenStopped = true
-//        view.addSubview(activityIndicator)
         
         if location.locationToPhoto?.count == 0 {
-            //activityIndicator.startAnimating()
             getPhotosFromPin(location!)
         }
     }
@@ -83,10 +78,9 @@ class PinDetailViewController: UIViewController {
     
     // MARK: - Action Methods
     @IBAction func updateCollectionView(_ sender: Any) {
-        // TODO: fix this method
+        
         if collectionButton.currentTitle == "Delete Selected Pictures" {
             for photo in itemToDelete {
-                //let photoToDelete = fetchedResultsController.object(at: indexPath as IndexPath)
                 dataController.viewContext.delete(photo)
                 try? dataController.viewContext.save()
             }
@@ -94,7 +88,6 @@ class PinDetailViewController: UIViewController {
         } else {
             location.removeFromLocationToPhoto(location.locationToPhoto!)
             try? dataController.viewContext.save()
-            //fetchedResultsController.
             getPhotosFromPin(location!)
         }
         itemToDelete.removeAll()
@@ -122,7 +115,7 @@ class PinDetailViewController: UIViewController {
         FlickrClient.sharedInstance().getImagesFromPin(parameters as [String: AnyObject]){(result, error) in
             
             guard error == nil else {
-                self.displayError("\(String(describing: error))")
+                self.displayError(error?.localizedDescription)
                 return
             }
             
@@ -139,22 +132,19 @@ class PinDetailViewController: UIViewController {
                     thisPhoto.photoToLocation = location
                     try? self.dataController.viewContext.save()
                 }
-                //self.activityIndicator.stopAnimating()
             }
         }
     }
     
     
     func returnPhotosToSave(_ photos: [AnyObject]) -> [AnyObject] {
-        //let numberOfPhotosPassed = photos.count as Int
         let numberOfPhotosWeReturn: Int = 15
         
         var returnedPhotos = [AnyObject]()
         
         if photos.count == 0 {
-            /*
-             TODO: Handle the scenario where there are no photos for this area.
-             */
+            self.debugLabel.text = "There are no photos for this location"
+            self.collectionButton.isEnabled = false
         } else {
             var photoNum = 0
             while photoNum < numberOfPhotosWeReturn {
@@ -192,19 +182,17 @@ class PinDetailViewController: UIViewController {
     }
     
     func displayError(_ error: String?) {
-        /*
-         TODO: Implement this method
-         */
+        
         performUIUpdatesOnMain {
             self.collectionButton.isEnabled = false
             self.collectionButton.backgroundColor = UIColor.gray
+            self.collectionButton.setTitleColor(UIColor.white, for: .normal)
             if let errorString = error {
                 print(errorString)
                 self.debugLabel.text = errorString
             } else {
                 self.debugLabel.text = "unknown error"
             }
-            //self.activityIndicator.stopAnimating()
         }
     }
 }
@@ -213,10 +201,6 @@ class PinDetailViewController: UIViewController {
 extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        if fetchedResultsController.sections?.count == 0 {
-            self.debugLabel.text = "There are no photos for this location"
-            self.collectionButton.isEnabled = false
-        }
         return fetchedResultsController.sections?.count ?? 1
     }
     
