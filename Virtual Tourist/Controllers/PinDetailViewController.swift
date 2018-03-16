@@ -16,15 +16,25 @@ class PinDetailViewController: UIViewController {
     // MARK: - Properties
     var location:Location! 
     var dataController:DataController!
-    var photos: [Photo] = []
+    var fetchedResultsController:NSFetchedResultsController<Photo>!
+    var itemToDelete = [Photo]()
+    var insertedIndexPaths: [NSIndexPath]!
+    var deletedIndexPaths: [NSIndexPath]!
+    //var activityIndicator:UIActivityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+    var selectedIndexes = [NSIndexPath]() {
+        didSet {
+            collectionView.reloadData()
+        }
+    }
     
     //MARK: - Outlets
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var mapView: MKMapView!
-    var fetchedResultsController:NSFetchedResultsController<Photo>!
-    //let photoFetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
-    //var photoPredicate = NSPredicate()
+    @IBOutlet weak var collectionButton: UIButton!
+    @IBOutlet weak var debugLabel: UILabel!
     
+    
+    //MARK: - Fetch Request Setup
     fileprivate func setupFetchedResultsController(){
         let photoFetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
         let photoPredicate = NSPredicate(format: "photoToLocation == %@", location)
@@ -33,7 +43,7 @@ class PinDetailViewController: UIViewController {
         photoFetchRequest.sortDescriptors = [sortDescriptor]
         
         fetchedResultsController = NSFetchedResultsController(fetchRequest: photoFetchRequest, managedObjectContext: dataController.viewContext, sectionNameKeyPath: nil, cacheName: nil)
-        fetchedResultsController.delegate = self as? NSFetchedResultsControllerDelegate
+        fetchedResultsController.delegate = self as NSFetchedResultsControllerDelegate
         
         do {
             try fetchedResultsController.performFetch()
@@ -42,38 +52,60 @@ class PinDetailViewController: UIViewController {
         }
     }
     
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        
-        setupFetchedResultsController()
-    }
+    // MARK: - Lifecycle Methods
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         collectionView.delegate = self
         collectionView.dataSource = self
+        mapView.delegate = self
         setupFetchedResultsController()
+        itemToDelete.removeAll()
+        selectedIndexes.removeAll()
+        setupMap()
+//        activityIndicator.center = self.view.center
+//        activityIndicator.hidesWhenStopped = true
+//        view.addSubview(activityIndicator)
         
-        if photos.count == 0 {
-            print("we had no photos")
+        if location.locationToPhoto?.count == 0 {
+            //activityIndicator.startAnimating()
             getPhotosFromPin(location!)
-            collectionView.reloadData()
-        } else {
-            print("we have photos")
-            collectionView.reloadData()
         }
-        //print("photos from pinDetail \(photos)")
     }
+    
+
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         fetchedResultsController = nil
     }
     
-    func getPhotosFromPin(_ location: Location){
+    // MARK: - Action Methods
+    @IBAction func updateCollectionView(_ sender: Any) {
+        // TODO: fix this method
+        if collectionButton.currentTitle == "Delete Selected Pictures" {
+            for photo in itemToDelete {
+                //let photoToDelete = fetchedResultsController.object(at: indexPath as IndexPath)
+                dataController.viewContext.delete(photo)
+                try? dataController.viewContext.save()
+            }
+            collectionButton.setTitle("New Collection", for: .normal)
+        } else {
+            location.removeFromLocationToPhoto(location.locationToPhoto!)
+            try? dataController.viewContext.save()
+            //fetchedResultsController.
+            getPhotosFromPin(location!)
+        }
+        itemToDelete.removeAll()
+        selectedIndexes.removeAll()
+    }
+    
+    
+    
+    // MARK: - Helper Methods
+    
+    func getPhotosFromPin(_ location: Location) {
         
         // Need to make a string from Longitude and Latitude
         let bboxString = makeBboxString(CLLocationCoordinate2DMake((CLLocationDegrees(location.latitude)), (CLLocationDegrees(location.longitude))))
@@ -90,46 +122,28 @@ class PinDetailViewController: UIViewController {
         FlickrClient.sharedInstance().getImagesFromPin(parameters as [String: AnyObject]){(result, error) in
             
             guard error == nil else {
-                self.displayError(error!)
+                self.displayError("\(String(describing: error))")
                 return
             }
+            
             if let returnedPhotos = result {
                 let photosToSave = self.returnPhotosToSave(returnedPhotos)
-                print("\(photosToSave)")
+                
                 for photo in photosToSave {
                     let thisPhoto = Photo(context: self.dataController.viewContext)
                     thisPhoto.imageUrl = photo[FlickrClient.Constants.FlickrResponseKeys.MediumURL] as? String
                     thisPhoto.photoID = photo[FlickrClient.Constants.FlickrResponseKeys.Title] as? String
-                    //thisPhoto.imageData = thisPhoto.getPhotoData(thisPhoto.imageUrl!)
-                    self.getPhotoData(thisPhoto.imageUrl!, thisPhoto){(data, error) in
-                        thisPhoto.imageData = NSData(data: data! as Data)
-                    }
+                   
+                    let image = try! UIImage(data: Data(contentsOf: URL(string: thisPhoto.imageUrl!)!))
+                    thisPhoto.imageData = UIImagePNGRepresentation(image!) as NSData?
                     thisPhoto.photoToLocation = location
                     try? self.dataController.viewContext.save()
-                    print("\(thisPhoto)")
                 }
+                //self.activityIndicator.stopAnimating()
             }
         }
     }
     
-    func getPhotoData(_ urlString: String, _ photo: Photo, completionHandlerForGetPhotoData: @escaping (_ results: NSData?, _ errorString: String?) -> Void) {
-        let url = URL(string: urlString)
-        
-        
-        URLSession.shared.dataTask(with: url!){(data,response,error) in
-            if error != nil {
-                print("Failed fetching image: ", error as Any)
-                return
-            }
-            
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-                print("Not a proper HTTPURLResponse or statusCode")
-                return
-            }
-            
-            completionHandlerForGetPhotoData(NSData(data: data!) , nil)
-            }.resume()
-    }
     
     func returnPhotosToSave(_ photos: [AnyObject]) -> [AnyObject] {
         //let numberOfPhotosPassed = photos.count as Int
@@ -167,16 +181,42 @@ class PinDetailViewController: UIViewController {
         
     }
     
-    func displayError(_ error: NSError) {
+    func setupMap(){
+        mapView.isUserInteractionEnabled = false
+        
+        let annotation = MKPointAnnotation()
+        annotation.coordinate = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+        mapView.addAnnotation(annotation)
+        mapView.setRegion(MKCoordinateRegion(center: annotation.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.4, longitudeDelta: 0.4)), animated: true)
+        mapView.regionThatFits(MKCoordinateRegion(center: annotation.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.4, longitudeDelta: 0.4)))
+    }
+    
+    func displayError(_ error: String?) {
         /*
          TODO: Implement this method
          */
+        performUIUpdatesOnMain {
+            self.collectionButton.isEnabled = false
+            self.collectionButton.backgroundColor = UIColor.gray
+            if let errorString = error {
+                print(errorString)
+                self.debugLabel.text = errorString
+            } else {
+                self.debugLabel.text = "unknown error"
+            }
+            //self.activityIndicator.stopAnimating()
+        }
     }
 }
 
+// MARK: - Collection View Methods
 extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
+        if fetchedResultsController.sections?.count == 0 {
+            self.debugLabel.text = "There are no photos for this location"
+            self.collectionButton.isEnabled = false
+        }
         return fetchedResultsController.sections?.count ?? 1
     }
     
@@ -185,38 +225,96 @@ extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewD
         return fetchedResultsController.sections?[0].numberOfObjects ?? 0
     }
     
-    
+
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        /*
-         TODO: Implement this method.  Item selected should be highlighted and added to a list of photos in queue to delete.
-         */
+        if let indexSelection = selectedIndexes.index(of: indexPath as NSIndexPath) {
+            selectedIndexes.remove(at: indexSelection)
+            itemToDelete.remove(at: itemToDelete.index(of: fetchedResultsController.object(at: indexPath))!)
+            if itemToDelete.count == 0 {
+                collectionButton.setTitle("New Collection", for: .normal)
+            }
+        } else {
+            collectionButton.setTitle("Delete Selected Pictures", for: .normal)
+            selectedIndexes.append(indexPath as NSIndexPath)
+            itemToDelete.append(fetchedResultsController.object(at: indexPath))
+        }
+        print("\(itemToDelete)")
     }
+    
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        /*
-         TODO: Implement this method.
-         */
-        
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionViewCell", for: indexPath) as! CollectionViewCell
-        let photo = fetchedResultsController.object(at: indexPath)
+        cell.imageView.image = UIImage(named: "placeholder")
+        cell.activityIndicator.isHidden = false
+        cell.activityIndicator.startAnimating()
         
-//        let image = UIImage(data: photo.imageData! as Data)
-//        cell.imageView.image = image
-//        if photo.imageData == nil {
-//            cell.imageView.image = UIImage(contentsOfFile: <#T##String#>)
-//        }
-        //getPhotoData(photo.imageUrl!, photo){(data, error) in
-        let imgData = photo.imageData
-        let img: NSData? = photo.value(forKey: "imageData") as? NSData
-//        cell.imageView.image = UIImage(contentsOfFile: photo.imageUrl!)
-        cell.imageView.image = UIImage(data: img! as Data)
+        DispatchQueue.main.async(){
+            let alreadySavedPhotos = self.fetchedResultsController.object(at: indexPath)
+            let image = UIImage(data: alreadySavedPhotos.imageData! as Data)
+            cell.activityIndicator.isHidden = true
+            cell.activityIndicator.stopAnimating()
+            cell.imageView.image = image
+        }
+            
+        
+        if self.selectedIndexes.index(of: indexPath as NSIndexPath) == nil{
+            cell.imageView.alpha = 1.0
+            cell.imageView.backgroundColor = UIColor.white
+        } else {
+            cell.imageView.alpha = 0.3
+            cell.imageView.backgroundColor = UIColor.gray
+        }
 
-        //}
-        
-        
         return cell
-        
+    }
+}
+
+// MARK: - Fetched Results Controller Delegate Methods
+extension PinDetailViewController:NSFetchedResultsControllerDelegate {
+    
+    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        insertedIndexPaths = []
+        deletedIndexPaths = []
     }
     
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        collectionView.performBatchUpdates({
+            for pathToInsert in self.insertedIndexPaths {
+                self.collectionView.insertItems(at: [pathToInsert as IndexPath])
+            }
+            
+            for pathToDelete in self.deletedIndexPaths {
+                self.collectionView.deleteItems(at: [pathToDelete as IndexPath])
+            }}, completion: nil)
+    }
     
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
+        switch type {
+        case .insert:
+            insertedIndexPaths.append(newIndexPath! as NSIndexPath)
+        case .delete:
+            deletedIndexPaths.append(indexPath! as NSIndexPath)
+        default:
+            break
+        }
+    }
 }
+
+extension PinDetailViewController:MKMapViewDelegate{
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        let reuseId = "pin"
+        
+        var pinView = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId) as? MKPinAnnotationView
+        
+        if pinView == nil {
+            pinView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
+            pinView!.animatesDrop = true
+            pinView!.pinTintColor = .red
+        } else {
+            pinView!.annotation = annotation
+        }
+        
+        return pinView
+    }
+}
+

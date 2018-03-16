@@ -12,7 +12,6 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    let coreDataStack = CoreDataStack(modelName: "Model")
     let dataController = DataController(modelName: "Model")
 
     func checkIfFirstLaunch(){

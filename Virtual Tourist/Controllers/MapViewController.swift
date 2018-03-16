@@ -13,14 +13,16 @@ import CoreData
 
 class MapViewController: UIViewController, MKMapViewDelegate {
     
+    // MARK: - Outlets
     @IBOutlet weak var mapView: MKMapView!
     
+    // MARK: - Properties
     var droppedPin : MKAnnotationView?
     var locations:[Location] = []
     var dataController:DataController!
-    
+
+    // MARK: - Lifecycle Methods
     override func viewDidLoad() {
-        
         super.viewDidLoad()
         mapView.delegate = self
         
@@ -36,6 +38,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             print("We've never saved before")
         }
         
+        // Set the fetch request and add pins to map
         let fetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
         if let result = try? dataController.viewContext.fetch(fetchRequest){
             locations = result
@@ -54,20 +57,40 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         
     }
     
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    /*
+     We create the next view controller and create the fetch request.
+     The fetch request performs the search by matching a latitude and longitude of the pin the user tapped on.
+     */
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        let controller = segue.destination as! PinDetailViewController
+        
+        let locationFetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
+        let latitude = Double((droppedPin?.annotation?.coordinate.latitude)!)
+        let longitude = Double((droppedPin?.annotation?.coordinate.longitude)!)
+        
+        let locationPredicate = NSPredicate(format: "latitude == %@ AND longitude == %@", argumentArray: [latitude, longitude])
+        locationFetchRequest.predicate = locationPredicate
+        
+        if let result = try? dataController.viewContext.fetch(locationFetchRequest){
+            controller.location = result[0]
+        }
+
+        controller.dataController = dataController
     }
 
+    // MARK: - Mapview Methods
     
     /*
      Whenever the user moves the map, we call saveMapRegion()
      */
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-        
         saveMapRegion()
     }
     
+    /*
+     Creates the pin and it's properties
+     */
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         let reuseId = "pin"
         
@@ -84,62 +107,16 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         return pinView
     }
     
+    /*
+     When a user taps on a pin, it will perform the segue
+     */
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-        
-//        let controller = storyboard!.instantiateViewController(withIdentifier: "PinDetailViewController") as! PinDetailViewController
-//        let fetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
-//        let coordinatePredicate: NSPredicate
-//
-//
-//        let latitude = Double((view.annotation?.coordinate.latitude)!)
-//        let longitude = Double((view.annotation?.coordinate.longitude)!)
-//
-//        coordinatePredicate = NSPredicate(format: "latitude == %@ AND longitude == %@", argumentArray: [latitude, longitude])
-//        fetchRequest.predicate = coordinatePredicate
-//
-//        if let result = try? dataController.viewContext.fetch(fetchRequest){
-//            controller.location = result[0]
-//        }
-        /*
-         TODO: Handle Error
-         */
         droppedPin = view
         performSegue(withIdentifier: "pushToCollection", sender: self)
-        //navigationController!.pushViewController(controller, animated: true)
+        mapView.deselectAnnotation(view.annotation, animated: true)
     }
     
-    
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-
-        let controller = segue.destination as! PinDetailViewController
-        
-        let photoFetchRequest:NSFetchRequest<Photo> = Photo.fetchRequest()
-        let locationFetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
-        let latitude = Double((droppedPin?.annotation?.coordinate.latitude)!)
-        let longitude = Double((droppedPin?.annotation?.coordinate.longitude)!)
-        
-        
-        let locationPredicate = NSPredicate(format: "latitude == %@ AND longitude == %@", argumentArray: [latitude, longitude])
-        locationFetchRequest.predicate = locationPredicate
-        if let result = try? dataController.viewContext.fetch(locationFetchRequest){
-            controller.location = result[0]
-        }
-        
-        let photoPredicate = NSPredicate(format: "photoToLocation == %@", controller.location)
-        photoFetchRequest.predicate = photoPredicate
-        if let photoResult = try? dataController.viewContext.fetch(photoFetchRequest){
-            controller.photos = photoResult
-        }
-        
-        controller.dataController = dataController
-//        let fetchedResultsController = NSFetchedResultsController(fetchRequest: photoFetchRequest, managedObjectContext: dataController.viewContext, sectionNameKeyPath: nil, cacheName: nil)
-//        fetchedResultsController.delegate = self as? NSFetchedResultsControllerDelegate
-        
-        
-
-        //photoPredicate = NSPredicate(format: "photo == %@", argumentArray: <#T##[Any]?#>)
-    }
-    
+    // MARK: - Helper Methods
     
     /*
      In this method, we save the user's longitude, latitude, longitudeDelta, and latitudeDelta.
@@ -168,9 +145,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         }
     }
     
-//    func presentPhotosOfLocation(){
-//
-//    }
+
     
     @objc func addAnnotation(_ sender: UIGestureRecognizer){
         print("we are in addAnnotation()")
@@ -187,89 +162,6 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             location.longitude = annotation.coordinate.longitude as Double
             try? dataController.viewContext.save()
             
-            //getPhotosFromPin(userTouchCoordinate)
-            
-            /*
-             TODO:
-                A) Create the UI and segue for next page
-                1) Persist this pin location
-                2) Make the call to Flickr based on this pin
-                3) Persist the photos returned by the call
-                4) Display photos in next view
-             */
         }
     }
-    
-//    func getPhotosFromPin(_ location: CLLocationCoordinate2D){
-//        
-//        // Need to make a string from Longitude and Latitude
-//        let bboxString = makeBboxString(location)
-//        
-//        let parameters = [
-//            FlickrClient.Constants.FlickrParameterKeys.Method: FlickrClient.Constants.FlickrParameterValues.SearchMethod,
-//            FlickrClient.Constants.FlickrParameterKeys.APIKey: FlickrClient.Constants.FlickrParameterValues.APIKey,
-//            FlickrClient.Constants.FlickrParameterKeys.BoundingBox: bboxString,
-//            FlickrClient.Constants.FlickrParameterKeys.Extras: FlickrClient.Constants.FlickrParameterValues.MediumURL,
-//            FlickrClient.Constants.FlickrParameterKeys.Format: FlickrClient.Constants.FlickrParameterValues.ResponseFormat,
-//            FlickrClient.Constants.FlickrParameterKeys.NoJSONCallback: FlickrClient.Constants.FlickrParameterValues.DisableJSONCallback
-//        ]
-//        
-//        FlickrClient.sharedInstance().getImagesFromPin(parameters as [String: AnyObject]){(result, error) in 
-//            
-//            guard error == nil else {
-//                self.displayError(error!)
-//                return
-//            }
-//            if let returnedPhotos = result {
-//                let photosToSave = self.returnPhotosToSave(returnedPhotos)
-//                print("\(photosToSave)")
-//                for photo in photosToSave {
-//                    let thisPhoto = Photo(context: self.dataController.viewContext)
-//                    thisPhoto.imageData = photo[FlickrClient.Constants.FlickrResponseKeys.MediumURL] as? String
-//                    thisPhoto.photoID = photo[FlickrClient.Constants.FlickrResponseKeys.Title] as? String
-//                    try? self.dataController.viewContext.save()
-//                }
-//            }
-//        }
-//    }
-//    
-//    func returnPhotosToSave(_ photos: [AnyObject]) -> [AnyObject] {
-//        //let numberOfPhotosPassed = photos.count as Int
-//        let numberOfPhotosWeReturn: Int = 15
-//        
-//        var returnedPhotos = [AnyObject]()
-//        
-//        if photos.count == 0 {
-//            /*
-//             TODO: Handle the scenario where there are no photos for this area.
-//             */
-//        } else {
-//            var photoNum = 0
-//            while photoNum < numberOfPhotosWeReturn {
-//                let randomIndex = Int(arc4random_uniform(UInt32(photos.count)))
-//                let photo = photos[randomIndex]
-//                returnedPhotos.append(photo)
-//                photoNum = photoNum + 1
-//            }
-//        }
-//        return returnedPhotos
-//    }
-//    
-//    func makeBboxString(_ location: CLLocationCoordinate2D) -> String{
-//        
-//        let longitude = Double(location.longitude)
-//        let latitude = Double(location.latitude)
-//        
-//        let minimumLong = max(longitude - FlickrClient.Constants.Flickr.SearchBBoxHalfWidth, FlickrClient.Constants.Flickr.SearchLonRange.0)
-//        let minimumLat = max(latitude - FlickrClient.Constants.Flickr.SearchBBoxHalfHeight, FlickrClient.Constants.Flickr.SearchLatRange.0)
-//        let maximumLong = min(longitude + FlickrClient.Constants.Flickr.SearchBBoxHalfWidth, FlickrClient.Constants.Flickr.SearchLonRange.1)
-//        let maximumLat = min(latitude + FlickrClient.Constants.Flickr.SearchBBoxHalfHeight, FlickrClient.Constants.Flickr.SearchLatRange.1)
-//        
-//        return "\(minimumLong),\(minimumLat),\(maximumLong),\(maximumLat)"
-//        
-//    }
-//    
-//    func displayError(_ error: NSError) {
-//        
-//    }
 }
