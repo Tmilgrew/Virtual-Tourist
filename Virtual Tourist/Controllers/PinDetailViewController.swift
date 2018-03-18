@@ -126,12 +126,9 @@ class PinDetailViewController: UIViewController {
                     let thisPhoto = Photo(context: self.dataController.viewContext)
                     thisPhoto.imageUrl = photo[FlickrClient.Constants.FlickrResponseKeys.MediumURL] as? String
                     thisPhoto.photoID = photo[FlickrClient.Constants.FlickrResponseKeys.Title] as? String
-                   
-                    let image = try! UIImage(data: Data(contentsOf: URL(string: thisPhoto.imageUrl!)!))
-                    thisPhoto.imageData = UIImagePNGRepresentation(image!) as NSData?
                     thisPhoto.photoToLocation = location
-                    try? self.dataController.viewContext.save()
                 }
+                try? self.dataController.viewContext.save()
             }
         }
     }
@@ -228,19 +225,29 @@ extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewD
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionViewCell", for: indexPath) as! CollectionViewCell
-        cell.imageView.image = UIImage(named: "placeholder")
-        cell.activityIndicator.isHidden = false
-        cell.activityIndicator.startAnimating()
+        let alreadySavedPhoto = self.fetchedResultsController.object(at: indexPath)
         
-        DispatchQueue.main.async(){
-            let alreadySavedPhotos = self.fetchedResultsController.object(at: indexPath)
-            let image = UIImage(data: alreadySavedPhotos.imageData! as Data)
+        if alreadySavedPhoto.imageData == nil {
+            cell.imageView.image = UIImage(named: "placeholder")
+            cell.activityIndicator.isHidden = false
+            cell.activityIndicator.startAnimating()
+            
+            DispatchQueue.main.async(){
+                
+                let image = try! UIImage(data: Data(contentsOf: URL(string: alreadySavedPhoto.imageUrl!)!))
+                alreadySavedPhoto.imageData = UIImagePNGRepresentation(image!) as NSData?
+                try? self.dataController.viewContext.save()
+                cell.activityIndicator.isHidden = true
+                cell.activityIndicator.stopAnimating()
+                cell.imageView.image = image
+            }
+        }else {
+            let image = UIImage(data: alreadySavedPhoto.imageData! as Data)
             cell.activityIndicator.isHidden = true
             cell.activityIndicator.stopAnimating()
             cell.imageView.image = image
         }
-            
-        
+
         if self.selectedIndexes.index(of: indexPath as NSIndexPath) == nil{
             cell.imageView.alpha = 1.0
             cell.imageView.backgroundColor = UIColor.white

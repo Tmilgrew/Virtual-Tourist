@@ -27,7 +27,7 @@ extension FlickrClient {
             
             /* GUARD: Was there an error */
             guard (error == nil) else {
-                sendError("There was an error with your request:\(String(describing: error))")
+                sendError((error?.localizedDescription)!)
                 return
             }
             
