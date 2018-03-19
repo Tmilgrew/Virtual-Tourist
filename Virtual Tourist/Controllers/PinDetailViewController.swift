@@ -20,6 +20,7 @@ class PinDetailViewController: UIViewController {
     var itemToDelete = [Photo]()
     var insertedIndexPaths: [NSIndexPath]!
     var deletedIndexPaths: [NSIndexPath]!
+    var saveObserverToken: Any?
     var selectedIndexes = [NSIndexPath]() {
         didSet {
             collectionView.reloadData()
@@ -68,8 +69,6 @@ class PinDetailViewController: UIViewController {
             getPhotosFromPin(location!)
         }
     }
-    
-
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
@@ -195,7 +194,7 @@ class PinDetailViewController: UIViewController {
 }
 
 // MARK: - Collection View Methods
-extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
         return fetchedResultsController.sections?.count ?? 1
@@ -222,6 +221,14 @@ extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewD
         print("\(itemToDelete)")
     }
     
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        
+        let cellsAcross: CGFloat = 3
+        let spaceBetweenCells: CGFloat = 10
+        let dim = (collectionView.bounds.width - (cellsAcross - 1) * spaceBetweenCells) / cellsAcross
+        return CGSize(width: dim, height: dim)
+    }
+    
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionViewCell", for: indexPath) as! CollectionViewCell
@@ -233,7 +240,7 @@ extension PinDetailViewController: UICollectionViewDataSource, UICollectionViewD
             cell.activityIndicator.startAnimating()
             
             DispatchQueue.main.async(){
-                
+                //let backgroundPhoto = backgroundContext.object(with: photoID) as! Photo
                 let image = try! UIImage(data: Data(contentsOf: URL(string: alreadySavedPhoto.imageUrl!)!))
                 alreadySavedPhoto.imageData = UIImagePNGRepresentation(image!) as NSData?
                 try? self.dataController.viewContext.save()
@@ -308,4 +315,3 @@ extension PinDetailViewController:MKMapViewDelegate{
         return pinView
     }
 }
-
